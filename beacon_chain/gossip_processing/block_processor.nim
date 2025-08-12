@@ -287,6 +287,8 @@ proc storeBackfillBlock(
       res
     of VerifierError.Duplicate:
       res
+    of VerifierError.MissingSidecars:
+      res
   else:
     when consensusFork <= ConsensusFork.Fulu:
       # Only store side cars after successfully establishing block viability.
@@ -884,6 +886,8 @@ proc addBlock*(
       # )
       err(res.error())
     of VerifierError.Duplicate:
+      err(res.error())
+    of VerifierError.MissingSidecars:
       err(res.error())
 
 proc storeBackfillPayload(
