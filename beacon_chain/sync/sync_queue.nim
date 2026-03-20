@@ -1594,7 +1594,7 @@ proc debugJsonDump*[M, N](sq: SyncQueue[M, N]): string =
             "\"id\": " & $uint64(it.id) & "," &
             "\"flags\": \"" & shortLog(it.flags) & "\"," &
             "\"created\": \"" & $(moment - it.createMoment) & "\"," &
-            "\"peer\": \"" & shortLog(getKey(it.item)) & "\"" &
+            "\"peer\": \"" & shortLog(getKey(it.item)) & "\"," &
             "\"peer_map\": \"" & $(sq.cbGetColumnMap(it.item)) & "\"" &
           "}"
         ).join(",")
@@ -1609,14 +1609,20 @@ proc debugJsonDump*[M, N](sq: SyncQueue[M, N]): string =
             localMap = sq.cbGetLocalColumnMap()
             missingMap = item.completeness.map
             presentMap = localMap and not(localMap and missingMap)
-            keys =
-              item.completeness.keys.pairs.toSeq().mapIt(
-                "\"" & peerLog(it[0]) & "\": \"" & $it[1] & "\""
-              ).join(",")
+            (keys, summaryMap) =
+              block:
+                var
+                  res: seq[string]
+                  map: ColumnMap
+                for k, v in item.completeness.keys.pairs():
+                  res.add("\"" & peerLog(k) & "\": \"" & $v & "\"")
+                  map = map or v
+                (res.join(","), map)
           "{" &
             "\"missing_map\": \"" & $item.completeness.map & "\"," &
             "\"present_map\": \"" & $presentMap & "\"," &
             "\"done\": " & $item.completeness.done & "," &
+            "\"summary_map\": \"" & $summaryMap & "\"," &
             "\"keys\": {" & keys & "}" &
           "}"
 
