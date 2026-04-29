@@ -121,18 +121,21 @@ type
     message*: ExecutionPayloadBid
     signature*: ValidatorSig
 
-  # https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.5/specs/gloas/beacon-chain.md#executionpayloadenvelope
+  # https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.6/specs/gloas/beacon-chain.md#executionpayloadenvelope
   ExecutionPayloadEnvelope* = object
     payload*: ExecutionPayload
     execution_requests*: ExecutionRequests
     builder_index*: uint64
     beacon_block_root*: Eth2Digest
+    parent_beacon_block_root*: Eth2Digest
+      ## [New in Gloas:EIP7732]
 
   TrustedExecutionPayloadEnvelope* = object
     payload*: ExecutionPayload
     execution_requests*: ExecutionRequests
     builder_index*: uint64
     beacon_block_root*: Eth2Digest
+    parent_beacon_block_root*: Eth2Digest
 
   # https://github.com/ethereum/consensus-specs/blob/v1.6.0-alpha.6/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope
   SignedExecutionPayloadEnvelope* = object
@@ -188,8 +191,10 @@ type
     weight*: Gwei
     withdrawal*: BuilderPendingWithdrawal
 
-  # https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.1/specs/gloas/p2p-interface.md#new-proposerpreferences
+  # https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.6/specs/gloas/p2p-interface.md#new-proposerpreferences
   ProposerPreferences* = object
+    checkpoint_root*: Eth2Digest
+      ## [New in Gloas:EIP7732]
     proposal_slot*: Slot
     validator_index*: uint64
     fee_recipient*: ExecutionAddress

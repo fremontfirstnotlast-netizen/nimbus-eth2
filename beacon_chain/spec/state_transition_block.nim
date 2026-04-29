@@ -1381,12 +1381,10 @@ proc process_execution_payload_bid*(
     if not can_builder_cover_bid(state, builder_index.BuilderIndex, amount):
       return err("payload_bid: builder can't cover the bid")
     # Verify that the bid signature is valid
-    debugHezeComment "..."
-    when false:
-      if not verify_execution_payload_bid_signature(
-          state.fork, state.genesis_validators_root, epoch, signed_bid.message,
-          state.builders.item(builder_index).pubkey, signed_bid.signature):
-        return err("payload_bid: invalid bid signature")
+    if not verify_execution_payload_bid_signature(
+        state.fork, state.genesis_validators_root, epoch, signed_bid.message,
+        state.builders.item(builder_index).pubkey, signed_bid.signature):
+      return err("payload_bid: invalid bid signature")
 
   # Verify commitments are under limit
   let blob_params = cfg.get_blob_parameters(epoch)
@@ -1564,15 +1562,11 @@ func update_next_withdrawal_builder_index(
       next_builder_index = BuilderIndex(next_index mod state.builders.lenu64)
     state.next_withdrawal_builder_index = next_builder_index
 
-# https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.5/specs/gloas/beacon-chain.md#modified-process_withdrawals
+# https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.6/specs/gloas/beacon-chain.md#modified-process_withdrawals
 func process_withdrawals*(state: var (gloas.BeaconState | heze.BeaconState)):
     Result[void, cstring] =
-  # return early if the parent block was empty
-  let
-    is_genesis_block = state.latest_block_hash.isZero()
-    is_parent_block_empty = state.latest_block_hash !=
-      state.latest_execution_payload_bid.block_hash
-  if is_genesis_block or is_parent_block_empty:
+  # Return early if the parent block is empty
+  if state.latest_block_hash != state.latest_execution_payload_bid.block_hash:
     return ok()
 
   let expected = get_expected_withdrawals(state)

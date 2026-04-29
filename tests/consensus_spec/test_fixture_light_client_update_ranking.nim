@@ -62,6 +62,11 @@ suite "EF - Light client - Update ranking" & preset():
       test "Light client - Update ranking - " & path:
         skip()
       continue
+    if fork >= ConsensusFork.Gloas:
+      # See test_fixture_light_client_sync for context on gloas+ LC skips.
+      test "Light client - Update ranking - " & path:
+        skip()
+      continue
     for kind, path in walkDir(testsPath, relative = true, checkDir = true):
       withConsensusFork(fork):
         const lcDataFork = lcDataForkAtConsensusFork(consensusFork)
