@@ -100,7 +100,7 @@ func isUnloaded[A](holder: SidecarHolder[A]): bool =
 func isLoaded[A](holder: SidecarHolder[A]): bool =
   holder.kind == SidecarHolderKind.Loaded
 
-func maxSidecars(maxSidecarsPerBlock: uint64): int =
+func maxSidecars*(maxSidecarsPerBlock: uint64): int =
   # Same limit as `MaxOrphans` in `block_quarantine`;
   # blobs may arrive before an orphan is tagged `blobless`
   3 * int(SLOTS_PER_EPOCH) * int(maxSidecarsPerBlock)
