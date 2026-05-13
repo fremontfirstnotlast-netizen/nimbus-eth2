@@ -201,6 +201,7 @@ type
     # Clients MAY use reason codes above 128 to indicate alternative,
     # erroneous request-specific responses.
     PeerScoreLow = 237 # 79 * 3
+    CommunicationTimeout = 238
 
   Eth2NetworkingErrorKind* = enum
     # Potentially benign errors (network conditions)
@@ -590,6 +591,8 @@ proc disconnect*(peer: Peer, reason: DisconnectionReason,
           SeenTableTimeFaultOrError
         of PeerScoreLow:
           SeenTablePenaltyError
+        of CommunicationTimeout:
+          SeenTableTimeTimeout
       peer.network.addSeen(peer.peerId, seenTime)
       await peer.network.switch.disconnect(peer.peerId)
   except CancelledError as exc:
