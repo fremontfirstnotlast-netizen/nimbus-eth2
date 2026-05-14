@@ -842,7 +842,13 @@ suite "ColumnQuarantine data structure test suite " & preset():
       (root: 9, slot: 96, index: 98, proposer_index: 28),
       (root: 10, slot: 127, index: 96, proposer_index: 29),
       (root: 10, slot: 127, index: 97, proposer_index: 29),
-      (root: 10, slot: 127, index: 98, proposer_index: 29)
+      (root: 10, slot: 127, index: 98, proposer_index: 29),
+      (root: 11, slot: 140, index: 63, proposer_index: 30),
+      (root: 11, slot: 140, index: 64, proposer_index: 30),
+      (root: 11, slot: 140, index: 65, proposer_index: 30),
+      (root: 11, slot: 140, index: 66, proposer_index: 30),
+      (root: 11, slot: 140, index: 95, proposer_index: 30),
+      (root: 11, slot: 140, index: 96, proposer_index: 30)
     ]
 
     var bq = ColumnQuarantine.init(cfg, custodyColumns, quarantine, 0, nil)
@@ -862,13 +868,23 @@ suite "ColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           uint64(item.proposer_index), ColumnIndex(item.index)) == true
 
-    bq.pruneAfterFinalization(Epoch(0), false)
+    bq.pruneAfterFinalization(Epoch(0), Opt.none(Slot))
+    check:
+      len(bq) == len(TestVectors)
+
+    for item in TestVectors:
+      check:
+        bq.hasSidecar(
+          genBlockRoot(item.root), Slot(item.slot),
+          uint64(item.proposer_index), ColumnIndex(item.index)) == true
+
+    bq.pruneAfterFinalization(Epoch(1), Opt.none(Slot))
     check:
       len(bq) == len(TestVectors) - 5
 
     for item in TestVectors:
       let res =
-        if item.root == 1:
+        if item.root in [1]:
           false
         else:
           true
@@ -877,7 +893,7 @@ suite "ColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           uint64(item.proposer_index), ColumnIndex(item.index)) == res
 
-    bq.pruneAfterFinalization(Epoch(1), false)
+    bq.pruneAfterFinalization(Epoch(2), Opt.none(Slot))
     check:
       len(bq) == len(TestVectors) - 5 - 6
 
@@ -892,7 +908,7 @@ suite "ColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           uint64(item.proposer_index), ColumnIndex(item.index)) == res
 
-    bq.pruneAfterFinalization(Epoch(2), false)
+    bq.pruneAfterFinalization(Epoch(3), Opt.none(Slot))
     check:
       len(bq) == len(TestVectors) - 5 - 6 - 12
 
@@ -907,7 +923,22 @@ suite "ColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           uint64(item.proposer_index), ColumnIndex(item.index)) == res
 
-    bq.pruneAfterFinalization(Epoch(3), false)
+    bq.pruneAfterFinalization(Epoch(5), Opt.some(Slot(127)))
+    check:
+      len(bq) == len(TestVectors) - 5 - 6 - 12 - 6
+
+    for item in TestVectors:
+      let res =
+        if item.root in [1, 2, 3, 4, 5, 6, 7, 8, 11]:
+          false
+        else:
+          true
+      check:
+        bq.hasSidecar(
+          genBlockRoot(item.root), Slot(item.slot),
+          uint64(item.proposer_index), ColumnIndex(item.index)) == res
+
+    bq.pruneAfterFinalization(Epoch(5), Opt.none(Slot))
     check:
       len(bq) == 0
 
@@ -1103,8 +1134,8 @@ suite "ColumnQuarantine data structure test suite " & preset():
         index = i mod len(custodyColumns)
         slot1 = i div len(custodyColumns) + 100
         slot2 = i div len(custodyColumns) + 100000
-        epoch1 = Slot(slot1).epoch()
-        epoch2 = Slot(slot2).epoch()
+        epoch1 = Slot(slot1).epoch() + 1
+        epoch2 = Slot(slot2).epoch() + 1
         blockRoot1 = genBlockRoot(slot1)
         blockRoot2 = genBlockRoot(slot2)
         sidecar1 = newClone(
@@ -1233,14 +1264,14 @@ suite "ColumnQuarantine data structure test suite " & preset():
 
     # Pruning memory and database
     for epoch in epochs1:
-      bq.pruneAfterFinalization(epoch, false)
+      bq.pruneAfterFinalization(epoch, Opt.none(Slot))
     for epoch in epochs2:
-      bq.pruneAfterFinalization(epoch, false)
+      bq.pruneAfterFinalization(epoch, Opt.none(Slot))
 
     check:
       len(bq) == 1
 
-    bq.pruneAfterFinalization(Slot(1000000).epoch(), false)
+    bq.pruneAfterFinalization(Epoch(35000), Opt.none(Slot))
 
     check:
       len(bq) == 0
@@ -2532,7 +2563,13 @@ suite "GloasColumnQuarantine data structure test suite " & preset():
       (root: 9, slot: 96, index: 98),
       (root: 10, slot: 127, index: 96),
       (root: 10, slot: 127, index: 97),
-      (root: 10, slot: 127, index: 98)
+      (root: 10, slot: 127, index: 98),
+      (root: 11, slot: 140, index: 63),
+      (root: 11, slot: 140, index: 64),
+      (root: 11, slot: 140, index: 65),
+      (root: 11, slot: 140, index: 66),
+      (root: 11, slot: 140, index: 95),
+      (root: 11, slot: 140, index: 96)
     ]
 
     var bq = GloasColumnQuarantine.init(cfg, custodyColumns, quarantine, 0, nil)
@@ -2552,13 +2589,23 @@ suite "GloasColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           ColumnIndex(item.index)) == true
 
-    bq.pruneAfterFinalization(Epoch(0), false)
+    bq.pruneAfterFinalization(Epoch(0), Opt.none(Slot))
+    check:
+      len(bq) == len(TestVectors)
+
+    for item in TestVectors:
+      check:
+        bq.hasSidecar(
+          genBlockRoot(item.root), Slot(item.slot),
+          ColumnIndex(item.index)) == true
+
+    bq.pruneAfterFinalization(Epoch(1), Opt.none(Slot))
     check:
       len(bq) == len(TestVectors) - 5
 
     for item in TestVectors:
       let res =
-        if item.root == 1:
+        if item.root in [1]:
           false
         else:
           true
@@ -2567,7 +2614,7 @@ suite "GloasColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           ColumnIndex(item.index)) == res
 
-    bq.pruneAfterFinalization(Epoch(1), false)
+    bq.pruneAfterFinalization(Epoch(2), Opt.none(Slot))
     check:
       len(bq) == len(TestVectors) - 5 - 6
 
@@ -2582,7 +2629,7 @@ suite "GloasColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           ColumnIndex(item.index)) == res
 
-    bq.pruneAfterFinalization(Epoch(2), false)
+    bq.pruneAfterFinalization(Epoch(3), Opt.none(Slot))
     check:
       len(bq) == len(TestVectors) - 5 - 6 - 12
 
@@ -2597,7 +2644,22 @@ suite "GloasColumnQuarantine data structure test suite " & preset():
           genBlockRoot(item.root), Slot(item.slot),
           ColumnIndex(item.index)) == res
 
-    bq.pruneAfterFinalization(Epoch(3), false)
+    bq.pruneAfterFinalization(Epoch(5), Opt.some(Slot(127)))
+    check:
+      len(bq) == len(TestVectors) - 5 - 6 - 12 - 6
+
+    for item in TestVectors:
+      let res =
+        if item.root in [1, 2, 3, 4, 5, 6, 7, 8, 11]:
+          false
+        else:
+          true
+      check:
+        bq.hasSidecar(
+          genBlockRoot(item.root), Slot(item.slot),
+          ColumnIndex(item.index)) == res
+
+    bq.pruneAfterFinalization(Epoch(5), Opt.none(Slot))
     check:
       len(bq) == 0
 
@@ -2782,8 +2844,8 @@ suite "GloasColumnQuarantine data structure test suite " & preset():
         index = i mod len(custodyColumns)
         slot1 = i div len(custodyColumns) + 100
         slot2 = i div len(custodyColumns) + 100000
-        epoch1 = Slot(slot1).epoch()
-        epoch2 = Slot(slot2).epoch()
+        epoch1 = Slot(slot1).epoch() + 1
+        epoch2 = Slot(slot2).epoch() + 1
         blockRoot1 = genBlockRoot(slot1)
         blockRoot2 = genBlockRoot(slot2)
         sidecar1 = newClone(
@@ -2898,14 +2960,14 @@ suite "GloasColumnQuarantine data structure test suite " & preset():
 
     # Pruning memory and database
     for epoch in epochs1:
-      bq.pruneAfterFinalization(epoch, false)
+      bq.pruneAfterFinalization(epoch, Opt.none(Slot))
     for epoch in epochs2:
-      bq.pruneAfterFinalization(epoch, false)
+      bq.pruneAfterFinalization(epoch, Opt.none(Slot))
 
     check:
       len(bq) == 1
 
-    bq.pruneAfterFinalization(Slot(1000000).epoch(), false)
+    bq.pruneAfterFinalization(Epoch(35000), Opt.none(Slot))
 
     check:
       len(bq) == 0
