@@ -27,7 +27,8 @@ from ../consensus_object_pools/block_pools_types import
   ChainDAGRef, EpochRef, OnBlockAdded, VerifierError, timeParams
 from ../consensus_object_pools/block_quarantine import
   addMissing, addSidecarless, addOrphan, addUnviable, clearProcessing, contains,
-  get, pop, remove, startProcessing, clearProcessing, UnviableKind
+  get, pop, remove, removeSidecarless, startProcessing, clearProcessing,
+  UnviableKind
 from ../consensus_object_pools/column_quarantine import
   ColumnQuarantine, GloasColumnQuarantine, popSidecars, put, slot
 from ../consensus_object_pools/envelope_quarantine import
@@ -1041,6 +1042,11 @@ proc enqueuePayload*(self: ref BlockProcessor, blck: gloas.SignedBeaconBlock) =
           self.envelopeQuarantine[].addOrphan(
             self.consensusManager.dag.finalizedHead.slot, envelope)
           return
+        # Sidecars are in hand — drop any sidecarless entry left over
+        # from a prior round so the request manager stops chasing columns
+        # we already have, and downstream iterators of `sidecarless` don't
+        # see a block that is already in the DAG.
+        discard self.consensusManager.quarantine[].removeSidecarless(blck.root)
         sidecarsOpt
 
   discard self.addPayload(blck, envelope, sidecarsOpt)

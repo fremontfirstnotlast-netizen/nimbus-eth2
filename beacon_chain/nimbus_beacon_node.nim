@@ -725,6 +725,8 @@ proc initFullNode(
               envelopeQuarantine[].addOrphan(dag.finalizedHead.slot, envelope)
               # Return ok() as columns may arrive late.
               return ok()
+            # Drop any sidecarless entry left over rom a prior round
+            discard consensusManager.quarantine[].removeSidecarless(blockRoot)
             sidecarsOpt
       await blockProcessor.addPayload(blck, envelope, sidecarsOpt)
     rmanEnvelopeLoader = proc(blockRoot: Eth2Digest):
