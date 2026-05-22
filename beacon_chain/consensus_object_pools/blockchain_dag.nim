@@ -2418,6 +2418,29 @@ proc loadExecutionBlockHash*(dag: ChainDAGRef, bid: BlockId): Opt[Eth2Digest] =
 proc loadExecutionBlockHash*(dag: ChainDAGRef, blck: BlockRef): Opt[Eth2Digest] =
   dag.loadExecutionAndParentBlockHash(blck)[0]
 
+func headExecutionValid*(head: BlockRef, headPayload: BlockRef): bool =
+  ## Since Gloas, execution validity of block is only known when we received the
+  ## envelope. In general, it would be execution invalid if the envelope is
+  ## invalid or missing (i.e. it has never been seen).
+  ##
+  ## Fork choice will decide whether or not to extend the head payload. In case
+  ## of not extending the payload, we should check `head.parent` instead.
+  ##
+  ## Validity result is purely based on head block as headPayload could be out
+  ## of synced which is unreliable.
+  if head == headPayload:
+    head.executionValid
+  else:
+    not head.parent.isNil and head.parent.executionValid
+
+func headExecutionValid*(
+    dag: ChainDAGRef, head: BlockRef, headPayload: BlockRef): bool =
+  ## Helper function for the routes between Gloas and pre-Gloas.
+  if dag.cfg.consensusForkAtEpoch(head.slot.epoch) >= ConsensusFork.Gloas:
+    headExecutionValid(head, headPayload)
+  else:
+    head.executionValid
+
 from std/packedsets import PackedSet, incl, items
 
 func getBlsToExecutionChangeStatuses(
@@ -2726,6 +2749,8 @@ proc updateHeadExecutionPayload*(
     fatal "Unable to load head state during head update, database corrupt?"
     quit 1
 
+  dag.headPayload = head
+  dag.db.putHeadPayload(head.root)
   debugGloasComment("update finalized head here?")
 
 proc isInitialized*(T: type ChainDAGRef, db: BeaconChainDB): Result[void, cstring] =
