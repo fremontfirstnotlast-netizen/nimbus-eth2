@@ -2750,7 +2750,6 @@ proc updateHeadExecutionPayload*(
     quit 1
 
   dag.headPayload = head
-  dag.db.putHeadPayload(head.root)
   debugGloasComment("update finalized head here?")
 
 proc isInitialized*(T: type ChainDAGRef, db: BeaconChainDB): Result[void, cstring] =
