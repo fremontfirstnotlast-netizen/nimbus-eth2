@@ -75,7 +75,7 @@ type
       Opt[ref gloas.DataColumnSidecar] {.gcsafe, raises: [].}
 
   PayloadEnqueueFn = proc(
-      blockRoot: Eth2Digest) {.gcsafe, raises: [].}
+      blck: gloas.SignedBeaconBlock) {.gcsafe, raises: [].}
 
   InhibitFn = proc: bool {.gcsafe, raises: [].}
 
@@ -514,10 +514,13 @@ template fetchDataColumnsFromNetworkImpl(
           if (let o = rman.quarantine[].popSidecarless(curRoot); o.isSome):
             let columnless = o.unsafeGet()
             withBlck(columnless):
-              when consensusFork >= ConsensusFork.Gloas:
-                # Block is already in DAG — drive the payload join instead
-                # of re-verifying the block.
-                rman.payloadEnqueue(forkyBlck.root)
+              when consensusFork == ConsensusFork.Gloas:
+                # Drive the payload join with the block in hand. If the
+                # block isn't in DAG yet (rare, e.g. quarantine pressure
+                # caused an early addSidecarless), the join fails with
+                # MissingParent and re-parks envelope+sidecars for the
+                # storeBlock-trailing enqueuePayload to pick up later.
+                rman.payloadEnqueue(forkyBlck)
               else:
                 discard await rman.blockVerifier(columnless, false)
     else:
@@ -719,10 +722,11 @@ proc getMissingDataColumns(rman: RequestManager):
     let columnless = rman.quarantine[].popSidecarless(root).valueOr:
       continue
     withBlck(columnless):
-      when consensusFork >= ConsensusFork.Gloas:
-        # Block is already in DAG — drive the payload join instead of
-        # re-verifying the block.
-        rman.payloadEnqueue(forkyBlck.root)
+      when consensusFork == ConsensusFork.Gloas:
+        # Drive the payload join with the block in hand. If the block
+        # isn't in DAG yet (rare), the join fails with MissingParent and
+        # self-recovers via the storeBlock-trailing enqueuePayload.
+        rman.payloadEnqueue(forkyBlck)
       else:
         discard rman.blockVerifier(columnless, false)
   (fuluFetches, gloasFetches)
@@ -770,10 +774,12 @@ proc requestManagerDataColumnLoop(
         let blck = rman.quarantine[].popSidecarless(blockRoot).valueOr:
           continue
         withBlck(blck):
-          when consensusFork >= ConsensusFork.Gloas:
-            # Block is already in DAG — drive the payload join instead of
-            # re-verifying the block.
-            rman.payloadEnqueue(forkyBlck.root)
+          when consensusFork == ConsensusFork.Gloas:
+            # Drive the payload join with the block in hand. If the
+            # block isn't in DAG yet (rare), the join fails with
+            # MissingParent and self-recovers via the storeBlock-trailing
+            # enqueuePayload.
+            rman.payloadEnqueue(forkyBlck)
           else:
             verifiers.add rman.blockVerifier(blck, maybeFinalized = false)
       try:

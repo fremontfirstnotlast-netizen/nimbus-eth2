@@ -793,8 +793,8 @@ proc initFullNode(
     router = (ref MessageRouter)(
       processor: processor,
       network: node.network)
-    rmanPayloadEnqueue = proc(blockRoot: Eth2Digest) =
-      blockProcessor.enqueuePayload(blockRoot)
+    rmanPayloadEnqueue = proc(blck: gloas.SignedBeaconBlock) =
+      blockProcessor.enqueuePayload(blck)
     requestManager = RequestManager.init(
       node.network, validatorCustody,
       dag.cfg.DENEB_FORK_EPOCH, getBeaconTime,
