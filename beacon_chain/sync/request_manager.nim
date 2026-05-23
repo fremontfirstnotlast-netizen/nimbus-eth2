@@ -74,6 +74,9 @@ type
       columnId: DataColumnIdentifier):
       Opt[ref gloas.DataColumnSidecar] {.gcsafe, raises: [].}
 
+  PayloadEnqueueFn = proc(
+      blockRoot: Eth2Digest) {.gcsafe, raises: [].}
+
   InhibitFn = proc: bool {.gcsafe, raises: [].}
 
   DataColumnResponseRecord* = object
@@ -99,6 +102,7 @@ type
     envelopeLoader: EnvelopeLoaderFn
     dataColumnLoader: DataColumnLoaderFn
     gloasDataColumnLoader: GloasDataColumnLoaderFn
+    payloadEnqueue: PayloadEnqueueFn
     blockLoopFuture: Future[void].Raising([CancelledError])
     envelopeLoopFuture: Future[void].Raising([CancelledError])
     dataColumnLoopFuture: Future[void].Raising([CancelledError])
@@ -136,7 +140,8 @@ func init*(T: type RequestManager, network: Eth2Node,
               envelopeVerifier: EnvelopeVerifierFn,
               envelopeLoader: EnvelopeLoaderFn,
               dataColumnLoader: DataColumnLoaderFn = nil,
-              gloasDataColumnLoader: GloasDataColumnLoaderFn = nil
+              gloasDataColumnLoader: GloasDataColumnLoaderFn = nil,
+              payloadEnqueue: PayloadEnqueueFn = nil
               ): RequestManager =
   RequestManager(
     network: network,
@@ -152,7 +157,8 @@ func init*(T: type RequestManager, network: Eth2Node,
     envelopeVerifier: envelopeVerifier,
     envelopeLoader: envelopeLoader,
     dataColumnLoader: dataColumnLoader,
-    gloasDataColumnLoader: gloasDataColumnLoader)
+    gloasDataColumnLoader: gloasDataColumnLoader,
+    payloadEnqueue: payloadEnqueue)
 
 func checkResponse(roots: openArray[Eth2Digest],
                    blocks: openArray[ref ForkedSignedBeaconBlock]): bool =
@@ -506,7 +512,14 @@ template fetchDataColumnsFromNetworkImpl(
         if col.block_root != curRoot:
           curRoot = col.block_root
           if (let o = rman.quarantine[].popSidecarless(curRoot); o.isSome):
-            discard await rman.blockVerifier(o.unsafeGet(), false)
+            let columnless = o.unsafeGet()
+            withBlck(columnless):
+              when consensusFork >= ConsensusFork.Gloas:
+                # Block is already in DAG — drive the payload join instead
+                # of re-verifying the block.
+                rman.payloadEnqueue(forkyBlck.root)
+              else:
+                discard await rman.blockVerifier(columnless, false)
     else:
       debug "Data columns by root request failed or peer missing custody columns",
         peer = peer,
@@ -705,7 +718,13 @@ proc getMissingDataColumns(rman: RequestManager):
   for root in ready:
     let columnless = rman.quarantine[].popSidecarless(root).valueOr:
       continue
-    discard rman.blockVerifier(columnless, false)
+    withBlck(columnless):
+      when consensusFork >= ConsensusFork.Gloas:
+        # Block is already in DAG — drive the payload join instead of
+        # re-verifying the block.
+        rman.payloadEnqueue(forkyBlck.root)
+      else:
+        discard rman.blockVerifier(columnless, false)
   (fuluFetches, gloasFetches)
 
 proc requestManagerDataColumnLoop(
@@ -750,7 +769,13 @@ proc requestManagerDataColumnLoop(
       for blockRoot in blockRoots:
         let blck = rman.quarantine[].popSidecarless(blockRoot).valueOr:
           continue
-        verifiers.add rman.blockVerifier(blck, maybeFinalized = false)
+        withBlck(blck):
+          when consensusFork >= ConsensusFork.Gloas:
+            # Block is already in DAG — drive the payload join instead of
+            # re-verifying the block.
+            rman.payloadEnqueue(forkyBlck.root)
+          else:
+            verifiers.add rman.blockVerifier(blck, maybeFinalized = false)
       try:
         await allFutures(verifiers)
       except CancelledError as exc:

@@ -793,6 +793,8 @@ proc initFullNode(
     router = (ref MessageRouter)(
       processor: processor,
       network: node.network)
+    rmanPayloadEnqueue = proc(blockRoot: Eth2Digest) =
+      blockProcessor.enqueuePayload(blockRoot)
     requestManager = RequestManager.init(
       node.network, validatorCustody,
       dag.cfg.DENEB_FORK_EPOCH, getBeaconTime,
@@ -800,7 +802,7 @@ proc initFullNode(
       quarantine, envelopeQuarantine,
       dataColumnQuarantine, gloasColumnQuarantine, rmanBlockVerifier,
       rmanBlockLoader, rmanEnvelopeVerifier, rmanEnvelopeLoader,
-      rmanDataColumnLoader, rmanGloasDataColumnLoader)
+      rmanDataColumnLoader, rmanGloasDataColumnLoader, rmanPayloadEnqueue)
 
   # As per EIP 7594, the BN is now categorised into a
   # `Fullnode` and a `Supernode`, the fullnodes custodies a
