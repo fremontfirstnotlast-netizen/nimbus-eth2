@@ -1430,7 +1430,7 @@ proc init*(T: type ChainDAGRef, cfg: RuntimeConfig, db: BeaconChainDB,
         # If we end up in here, we failed the root comparison just below in
         # an earlier iteration
         fatal "Era summaries don't lead up to backfill, database or era files corrupt?",
-          bid, backfillSlot
+          bid, backfillSlot, tail = shortLog(dag.tail)
         quit 1
 
       # In BeaconState.block_roots, empty slots are filled with the root of
