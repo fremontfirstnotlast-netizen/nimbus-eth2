@@ -678,6 +678,10 @@ func `>`*(a: SyncRange, b: Slot): bool {.inline.} =
   ## Returns `true` if all slots in range `a` are bigger than slot `b`.
   (a.start_slot() > b) and (a.last_slot() > b)
 
+func `>=`*(a: SyncRange, b: Slot): bool {.inline.} =
+  ## Returns `true` if all slots in range `a` are equal or bigger than slot `b`.
+  (a.start_slot() >= b) and (a.last_slot() >= b)
+
 func `<`*(a: SyncRange, b: Slot): bool {.inline.} =
   ## Returns `true` if all slots in range `a` are smaller than slot `b`.
   (a.start_slot() < b) and (a.last_slot() < b)
