@@ -1427,8 +1427,8 @@ proc init*(T: type ChainDAGRef, cfg: RuntimeConfig, db: BeaconChainDB,
       # to be served from era files. Checkpoint sync starts from state only
       if (bid.slot > backfillSlot) or
          (bid.slot == backfillSlot and
-           db.finalizedBlocks.get(bid.slot).isNone() or
-           (bid.root != db.finalizedBlocks.get(bid.slot).get())):
+           (db.finalizedBlocks.get(bid.slot).isNone()) or
+           (db.finalizedBlocks.get(bid.slot).isSome() and bid.root != db.finalizedBlocks.get(bid.slot).get())):
         # If we end up in here, we failed the root comparison just below in
         # an earlier iteration
         fatal "Era summaries don't lead up to backfill, database or era files corrupt?",
